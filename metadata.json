@@ -1,0 +1,6 @@
+{
+  "name": "GlobalNewsBuzz",
+  "description": "Application Android d'actualités internationales en temps réel combinant news mondiales, buzz viral, IA et vidéos courtes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
