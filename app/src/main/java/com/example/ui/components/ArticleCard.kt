@@ -59,7 +59,7 @@ fun ArticleCard(
                 )
                 
                 Text(
-                    text = article.title,
+                    text = article.title ?: "No Title",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
@@ -84,7 +84,7 @@ fun ArticleCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = article.publishedAt.take(10), // Simplistic date formatting
+                        text = article.publishedAt?.take(10) ?: "", // Simplistic date formatting
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

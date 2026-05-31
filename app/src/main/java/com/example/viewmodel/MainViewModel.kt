@@ -49,7 +49,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val articles = repository.getTopHeadlines(if (category == "general") null else category)
                 _homeState.value = NewsUiState.Success(articles)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 _homeState.value = NewsUiState.Error("Failed to fetch news: ${e.message}")
             }
         }
@@ -59,14 +59,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (query.isBlank()) return
         viewModelScope.launch {
             _isAiLoading.value = true
-            _aiSearchState.value = repository.searchNewsWithAI(query)
-            _isAiLoading.value = false
+            try {
+                _aiSearchState.value = repository.searchNewsWithAI(query)
+            } catch (e: Throwable) {
+                _aiSearchState.value = "Error: ${e.message}"
+            } finally {
+                _isAiLoading.value = false
+            }
         }
     }
 
     fun toggleFavorite(article: Article, isCurrentlyFav: Boolean) {
         viewModelScope.launch {
-            repository.toggleFavorite(article, isCurrentlyFav)
+            try {
+                repository.toggleFavorite(article, isCurrentlyFav)
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
         }
     }
 }

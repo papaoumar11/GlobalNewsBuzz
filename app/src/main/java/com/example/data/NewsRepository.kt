@@ -8,10 +8,11 @@ import com.example.api.GenerateContentRequest
 import com.example.api.Part
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.catch
 
 class NewsRepository(private val articleDao: ArticleDao) {
-    private val newsApi = NetworkClient.newsApiService
-    private val geminiApi = NetworkClient.geminiApiService
+    private val newsApi by lazy { NetworkClient.newsApiService }
+    private val geminiApi by lazy { NetworkClient.geminiApiService }
     
     // In production, warn user about keys. Using safe fallback if empty.
     private val newsApiKey = BuildConfig.NEWS_API_KEY.takeIf { it.isNotBlank() && it != "MY_NEWS_API_KEY" } ?: "demo_key"
@@ -21,7 +22,7 @@ class NewsRepository(private val articleDao: ArticleDao) {
         return try {
             val response = newsApi.getTopHeadlines(category = category, apiKey = newsApiKey)
             response.articles
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             e.printStackTrace()
             getMockArticles(category) // Fallback for testing when key is missing or invalid
         }
@@ -36,14 +37,19 @@ class NewsRepository(private val articleDao: ArticleDao) {
                 )
             )
             res.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "No results found."
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             e.printStackTrace()
-            "AI summary unavailable. Please check your Gemini API key."
+            "AI summary unavailable. Please check your Gemini API key, or it might be another configuration issue: ${e.message}"
         }
     }
     
     fun getFavorites(): Flow<List<Article>> {
-        return articleDao.getFavorites().map { entities -> entities.map { it.toArticle() } }
+        return articleDao.getFavorites()
+            .map { entities -> entities.map { it.toArticle() } }
+            .catch { e ->
+                e.printStackTrace()
+                emit(emptyList())
+            }
     }
     
     suspend fun toggleFavorite(article: Article, isFav: Boolean) {

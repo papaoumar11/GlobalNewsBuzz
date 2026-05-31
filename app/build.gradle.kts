@@ -100,7 +100,7 @@ dependencies {
   implementation(libs.okhttp)
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
-  implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.12.0")
+  implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")
   implementation(libs.kotlinx.serialization.json)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)

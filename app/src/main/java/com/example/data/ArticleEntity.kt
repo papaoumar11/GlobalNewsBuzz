@@ -9,10 +9,10 @@ data class ArticleEntity(
     @PrimaryKey val url: String,
     val sourceName: String?,
     val author: String?,
-    val title: String,
+    val title: String?,
     val description: String?,
     val urlToImage: String?,
-    val publishedAt: String,
+    val publishedAt: String?,
     val content: String?,
     val timestamp: Long = System.currentTimeMillis()
 )
