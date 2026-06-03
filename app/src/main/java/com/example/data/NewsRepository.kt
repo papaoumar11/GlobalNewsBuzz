@@ -58,6 +58,23 @@ class NewsRepository(private val articleDao: ArticleDao) {
         }
     }
 
+    suspend fun summarizeArticleContent(article: Article): String {
+        val textToSummarize = article.content ?: article.description ?: article.title ?: ""
+        if (textToSummarize.isBlank()) return "No content available to summarize."
+        return try {
+            val res = geminiApi.generateContent(
+                apiKey = geminiApiKey,
+                request = GenerateContentRequest(
+                    contents = listOf(Content(listOf(Part("Generate a brief bullet-point summary of the following article content:\n$textToSummarize"))))
+                )
+            )
+            res.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "Failed to generate summary."
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            "AI summary unavailable. Exception: ${e.message}"
+        }
+    }
+
     fun getFavorites(): Flow<List<Article>> {
         return articleDao.getFavorites()
             .map { entities -> entities.map { it.toArticle() } }

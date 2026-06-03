@@ -1,6 +1,8 @@
 package com.example.viewmodel
 
 import android.app.Application
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.api.Article
@@ -53,6 +55,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _translatingUrls = MutableStateFlow<Set<String>>(emptySet())
     val translatingUrls: StateFlow<Set<String>> = _translatingUrls.asStateFlow()
 
+    private var tts: TextToSpeech? = null
+    private val _speakingUrl = MutableStateFlow<String?>(null)
+    val speakingUrl: StateFlow<String?> = _speakingUrl.asStateFlow()
+
+    init {
+        tts = TextToSpeech(application) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = java.util.Locale.getDefault()
+                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {}
+                    override fun onDone(utteranceId: String?) {
+                        if (utteranceId?.startsWith("TTS_") == true) {
+                            val url = utteranceId.removePrefix("TTS_")
+                            if (_speakingUrl.value == url) {
+                                _speakingUrl.value = null
+                            }
+                        }
+                    }
+                    override fun onError(utteranceId: String?) {
+                        _speakingUrl.value = null
+                    }
+                })
+            }
+        }
+    }
+
+    fun speakArticle(article: Article) {
+        if (_speakingUrl.value == article.url) {
+            tts?.stop()
+            _speakingUrl.value = null
+        } else {
+            val textToRead = "${article.title ?: ""}. ${article.description ?: ""}"
+            if (textToRead.isNotBlank()) {
+                tts?.stop()
+                tts?.speak(textToRead, TextToSpeech.QUEUE_FLUSH, null, "TTS_${article.url}")
+                _speakingUrl.value = article.url
+            }
+        }
+    }
+
     fun translateArticle(article: Article, targetLanguage: String) {
         if (_translatingUrls.value.contains(article.url)) return
 
@@ -81,6 +123,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val favoriteUrls: StateFlow<Set<String>> = repository.getFavorites()
         .map { articles -> articles.map { it.url }.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    private val _articleSummaries = MutableStateFlow<Map<String, String>>(emptyMap())
+    val articleSummaries: StateFlow<Map<String, String>> = _articleSummaries.asStateFlow()
+
+    private val _summarizingUrls = MutableStateFlow<Set<String>>(emptySet())
+    val summarizingUrls: StateFlow<Set<String>> = _summarizingUrls.asStateFlow()
+
+    fun summarizeArticle(article: Article) {
+        if (_summarizingUrls.value.contains(article.url) || _articleSummaries.value.containsKey(article.url)) return
+
+        viewModelScope.launch {
+            _summarizingUrls.value = _summarizingUrls.value + article.url
+            try {
+                val summary = repository.summarizeArticleContent(article)
+                _articleSummaries.value = _articleSummaries.value.toMutableMap().apply {
+                    put(article.url, summary)
+                }
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            } finally {
+                _summarizingUrls.value = _summarizingUrls.value - article.url
+            }
+        }
+    }
 
     init {
         fetchNews("general")
@@ -137,5 +203,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 e.printStackTrace()
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        tts?.stop()
+        tts?.shutdown()
     }
 }

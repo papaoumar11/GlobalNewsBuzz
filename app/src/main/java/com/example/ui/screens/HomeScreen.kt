@@ -2,10 +2,13 @@ package com.example.ui.screens
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -21,6 +24,7 @@ import com.example.viewmodel.NewsUiState
 fun HomeScreen(viewModel: MainViewModel) {
     val uiState by viewModel.homeState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -42,8 +46,23 @@ fun HomeScreen(viewModel: MainViewModel) {
                 }
             }
         )
+        
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("Search news...") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+            shape = MaterialTheme.shapes.medium
+        )
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.refreshNews() },
+            modifier = Modifier.fillMaxSize()
+        ) {
             when (val state = uiState) {
                 is NewsUiState.Loading -> {
                     LazyColumn(
@@ -58,8 +77,12 @@ fun HomeScreen(viewModel: MainViewModel) {
                 }
                 is NewsUiState.Error -> {
                     Column(
-                        modifier = Modifier.align(Alignment.Center).padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(state.message, color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
@@ -69,22 +92,26 @@ fun HomeScreen(viewModel: MainViewModel) {
                     }
                 }
                 is NewsUiState.Success -> {
-                    PullToRefreshBox(
-                        isRefreshing = isRefreshing,
-                        onRefresh = { viewModel.refreshNews() },
-                        modifier = Modifier.fillMaxSize()
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            item {
-                                com.example.ui.components.TrendsChart()
+                        item {
+                            com.example.ui.components.TrendsChart()
+                        }
+                        
+                        val filteredArticles = if (searchQuery.isBlank()) {
+                            state.articles
+                        } else {
+                            state.articles.filter {
+                                (it.title?.contains(searchQuery, ignoreCase = true) == true) ||
+                                (it.description?.contains(searchQuery, ignoreCase = true) == true)
                             }
-                            items(state.articles) { article ->
-                                ArticleCard(article = article, viewModel = viewModel)
-                            }
+                        }
+                        
+                        items(filteredArticles) { article ->
+                            ArticleCard(article = article, viewModel = viewModel)
                         }
                     }
                 }

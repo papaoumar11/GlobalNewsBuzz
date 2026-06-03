@@ -6,11 +6,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,6 +44,16 @@ fun ArticleCard(
 
     val displayArticle = translatedArticles[article.url] ?: article
     val isTranslating = translatingUrls.contains(article.url)
+
+    val speakingUrl by viewModel.speakingUrl.collectAsState()
+    val isSpeaking = speakingUrl == article.url
+
+    val articleSummaries by viewModel.articleSummaries.collectAsState()
+    val summarizingUrls by viewModel.summarizingUrls.collectAsState()
+    
+    val summary = articleSummaries[article.url]
+    val isSummarizing = summarizingUrls.contains(article.url)
+    var showSummary by remember { mutableStateOf(false) }
 
     var showLanguageMenu by remember { mutableStateOf(false) }
     val languages = listOf("Spanish", "French", "German", "Japanese", "Arabic")
@@ -128,6 +141,28 @@ fun ArticleCard(
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
                         Box {
+                            if (isSummarizing) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Filled.AutoAwesome,
+                                    contentDescription = "AI Summarize",
+                                    tint = if (summary != null && showSummary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable { 
+                                            if (summary == null) {
+                                                viewModel.summarizeArticle(article)
+                                                showSummary = true
+                                            } else {
+                                                showSummary = !showSummary
+                                            }
+                                        }
+                                )
+                            }
+                        }
+
+                        Box {
                             if (isTranslating) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                             } else {
@@ -172,6 +207,16 @@ fun ArticleCard(
                                     context.startActivity(shareIntent)
                                 }
                         )
+
+                        Icon(
+                            imageVector = Icons.Filled.VolumeUp,
+                            contentDescription = "Read Aloud",
+                            tint = if (isSpeaking) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clickable { viewModel.speakArticle(article) }
+                        )
+
                         Icon(
                             imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                             contentDescription = "Favorite",
@@ -179,6 +224,41 @@ fun ArticleCard(
                             modifier = Modifier
                                 .size(24.dp)
                                 .clickable { viewModel.toggleFavorite(displayArticle, isFavorite) }
+                        )
+                    }
+                }
+                
+                AnimatedVisibility(visible = showSummary && summary != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(12.dp)
+                    ) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Filled.AutoAwesome,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "AI Summary",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = summary ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
