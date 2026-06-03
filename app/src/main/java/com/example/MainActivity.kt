@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -35,7 +36,11 @@ class MainActivity : ComponentActivity() {
         
         enableEdgeToEdge()
         setContent {
-            AppTheme {
+            val isDarkModeOverrides = viewModel.isDarkMode.collectAsState().value
+            val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
+            val useDarkTheme = isDarkModeOverrides ?: isSystemDark
+
+            AppTheme(darkTheme = useDarkTheme) {
                 if (lastCrash != null) {
                     Surface(modifier = Modifier.fillMaxSize()) {
                         androidx.compose.foundation.layout.Column(modifier = Modifier.verticalScroll(rememberScrollState())) {

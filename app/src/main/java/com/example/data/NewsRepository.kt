@@ -43,6 +43,21 @@ class NewsRepository(private val articleDao: ArticleDao) {
         }
     }
     
+    suspend fun translateText(text: String, targetLanguage: String): String {
+        return try {
+            val res = geminiApi.generateContent(
+                apiKey = geminiApiKey,
+                request = GenerateContentRequest(
+                    contents = listOf(Content(listOf(Part("Translate the following text into $targetLanguage. Only provide the translation, no other text:\n$text"))))
+                )
+            )
+            res.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: text
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            text
+        }
+    }
+
     fun getFavorites(): Flow<List<Article>> {
         return articleDao.getFavorites()
             .map { entities -> entities.map { it.toArticle() } }
